@@ -1,5 +1,6 @@
 class Servidor:
-    def __init__(self):
+    def __init__(self,direccion):
+        self.direccion=direccion
         self.usuarios = []
     
     def registrar_registrar(self, usuario):
@@ -79,9 +80,7 @@ class Usuario:
                         mensaje_clasificado = True
                         break
             if not mensaje_clasificado:
-                self.buzon.mensajes.append(mensaje)
-        
-            
+                self.buzon.mensajes.append(mensaje)        
     
 class Mensaje:
     def __init__(self, remitente, receptor, asunto, cuerpo,urgencia=""):
@@ -89,6 +88,7 @@ class Mensaje:
         self.receptor = receptor
         self.asunto = asunto
         self.cuerpo = cuerpo
+        # Solo es un detalle
         self.urgencia = urgencia 
            
     def __str__(self):
@@ -139,6 +139,7 @@ class Carpeta():
             if encontrada:
                 return encontrada        
         return None 
+    
     def eliminar_mensaje_por_asunto(self, asunto):
         mensaje_eliminado = None
         nueva_lista_mensajes = []
@@ -153,6 +154,7 @@ class Carpeta():
         if mensaje_eliminado is not None:
             self.mensajes = nueva_lista_mensajes        
         return mensaje_eliminado          
+    
     def buscar_y_extraer_mensaje(self,asunto):
         mensaje = self.eliminar_mensaje_por_asunto(asunto)
         if mensaje:
@@ -162,6 +164,7 @@ class Carpeta():
             if mensaje:
                 return mensaje
         return None
+    
     def mover_mensaje(self, asunto, destino):
         mensaje = self.buscar_y_extraer_mensaje(asunto)        
         if mensaje is None:
@@ -172,7 +175,7 @@ class Carpeta():
             return False
         carpeta_destino.agregar_mensaje(mensaje)        
         return True 
-
+# Cola de prioridades Nodo 
 class Nodo:
     def __init__(self,mensaje, prioridad):
         self.mensaje=mensaje
@@ -205,14 +208,255 @@ class ColaDePrioridades:
         self.frente = self.frente.siguiente
         return mensaje
 
-servidor = Servidor()
+
+#Implementacion de Red de grafo
+
+class NodoServidor:
+    def __init__(self, servidor):
+        self.servidor = servidor
+    def mostrar_nombre(self):
+        return self.servidor.direccion
+        
+    def __str__(self):
+        return self.servidor.direccion
+class Conexion:
+    def __init__(self, nodo_origen, nodo_destino):
+        self.nodo_origen = nodo_origen
+        self.nodo_destino = nodo_destino
+        
+    def mostrar_origen(self):
+        return self.nodo_origen
+        
+    def mostrar_destino(self):
+        return self.nodo_destino
+class RedServidores:
+    def __init__(self):
+        self.grafo = {}
+    def agregar_nodo(self, nodo):
+        if nodo not in self.grafo:
+            self.grafo[nodo] = []
+    # Conexion sin direccion
+    def agregar_conexione(self, conexion):
+        nodo_1 = conexion.mostrar_origen()
+        nodo_2 = conexion.mostrar_destino()
+        if nodo_1 not in self.grafo or nodo_2 not in self.grafo:
+            raise ValueError("Error: Ambos nodos deben ser agregados al grafo antes de conectarlos.")
+
+        if nodo_2 not in self.grafo[nodo_1]:
+            self.grafo[nodo_1].append(nodo_2)
+            
+        if nodo_1 not in self.grafo[nodo_2]:
+            self.grafo[nodo_2].append(nodo_1)
+    
+    def mostrar_nodo(self, servidor_nombre):
+        for v in self.grafo:
+            if servidor_nombre == v.servidor.direccion:
+                return v
+        print("El nodo '{}' no existe".format(servidor_nombre))
+        return None
+
+    def __str__(self):
+        """Muestra el grafo imprimiendo todas las conexiones únicas."""
+        total_conexiones = "Mapa de Red de Servidores:\n"
+        aristas_impresas = set()
+        
+        for v1 in self.grafo:
+            for v2 in self.grafo[v1]:
+                # Crea una tupla ordenada para identificar la arista de forma única (ej. ('A', 'B'))
+                arista = tuple(sorted((v1.mostrar_nombre(), v2.mostrar_nombre())))
+                
+                if arista not in aristas_impresas:
+                    total_conexiones += "- {} <--> {}\n".format(v1.mostrar_nombre(),v2.mostrar_nombre())
+                    aristas_impresas.add(arista)
+                    
+        return total_conexiones
+    
+# Metodo de busqueda DFS 
+    
+    def encontrar_ruta_dfs(self, nodo_inicio, nodo_destino):
+        if nodo_inicio not in self.grafo:
+            print("Error: El nodo de inicio {} no existe.".format(nodo_inicio.mostrar_nombre()))
+            return None
+
+        pila = [(nodo_inicio, [nodo_inicio.mostrar_nombre()])]
+        visitados = {nodo_inicio}
+
+        while pila:
+            item_actual = pila.pop() 
+
+            nodo_actual = item_actual[0] 
+            camino = item_actual[1]      
+
+            if nodo_actual == nodo_destino:
+                return camino
+
+            for vecino in self.grafo[nodo_actual]:
+                if vecino not in visitados:
+                    visitados.add(vecino)
+                    
+                    nuevo_camino = camino + [vecino.mostrar_nombre()]
+                    
+                    pila.append((vecino, nuevo_camino)) 
+
+        return None
+
+# Metodo de busqueda BFS no implementado  
+
+    def encontrar_ruta_bfs(self, nodo_inicio, nodo_destino):
+
+        if nodo_inicio not in self.grafo:
+            print("Error: El nodo de inicio {} no existe.".format(nodo_inicio.mostrar_nombre()))
+            return None
+
+        cola = [(nodo_inicio, [nodo_inicio.mostrar_nombre()])]
+        visitados = {nodo_inicio}
+
+        while cola:
+            #  Sacamos el primer elemento (la tupla completa)
+            item_actual = cola.pop(0) 
+
+            #  Accedemos a los elementos por su índice:
+            nodo_actual = item_actual[0] # El nodo Servidor es el primer elemento de la tupla
+            camino = item_actual[1]      # La lista del camino es el segundo elemento de la tupla
+
+            if nodo_actual == nodo_destino:
+                return camino # (Contiene la ruta más corta)
+
+            # Exploramos los vecinos
+            for vecino in self.grafo[nodo_actual]:
+                if vecino not in visitados:
+                    visitados.add(vecino)
+                    
+                    nuevo_camino = camino + [vecino.mostrar_nombre()]
+                    
+                    cola.append((vecino, nuevo_camino)) 
+
+        return None
+
+# Metodo para enviar msj utilizando la busqueda en profundidad
+    def enviar_mensaje_por_red(self, usuario_remitente, mensaje):
+        receptor_correo = mensaje.receptor
+        
+        try:
+            nombre_servidor_destino = receptor_correo.split('@')[1] 
+            nombre_servidor_origen = usuario_remitente.correo.split('@')[1]
+        except IndexError:
+            print("Error: El correo del receptor o remitente no tiene el formato correcto (usuario@servidor).")
+            return
+
+        nodo_origen = self.mostrar_nodo(nombre_servidor_origen)
+        nodo_destino = self.mostrar_nodo(nombre_servidor_destino)
+
+        if nodo_origen is None or nodo_destino is None:
+            return
+
+        # DETERMINAR LA RUTA USANDO DFS
+        if nodo_origen == nodo_destino:
+            ruta = [nombre_servidor_destino]
+        else:
+            #ruta = self.encontrar_ruta_dfs(nodo_origen, nodo_destino) 
+            ruta = self.encontrar_ruta_bfs(nodo_origen, nodo_destino) 
+
+        servidor_destino = nodo_destino.servidor
+        
+        #  VERIFICAR RUTA Y ENVIAR
+        if ruta is not None:
+            print("\n--- Ruta Encontrada (DFS): {} ---".format(' -> '.join(ruta)))
+            
+            servidor_destino.enviar_msj(usuario_remitente, mensaje)
+            
+        else:
+            print("Error: El servidor {} no es accesible desde {}.".format(nombre_servidor_destino, nombre_servidor_origen))
+    
+    
+    # Se agrega un metodo para ingresar secion desde la red
+    def iniciar_sesion(self, correo_completo, contrasenia):
+        if '@' not in correo_completo:
+            print("Error: El correo '{}' no tiene un formato válido.".format(correo_completo))
+            return None
+            
+        pos_arroba = correo_completo.index('@')
+        nombre_servidor = correo_completo[pos_arroba + 1:] 
+            
+        if not nombre_servidor:
+            print("Error: El correo '{}' no especifica un servidor.".format(correo_completo))
+            return None
+        
+        # Buscar el NodoServidor en el grafo usando la dirección del servidor
+        nodo_encontrado = self.mostrar_nodo(nombre_servidor)
+
+        if nodo_encontrado is None:
+            print("Error: No se encontró el servidor '{}' en la red.".format(nombre_servidor))
+            return None
+
+        servidor_destino = nodo_encontrado.servidor 
+        usuario_encontrado = servidor_destino.ingresar_usuario(correo_completo, contrasenia)
+        return usuario_encontrado
+    # Se agrega metodo para registrar usuarios por la red 
+    def registrar_usuario(self, correo_completo, contrasenia):
+        if '@' not in correo_completo:
+            print("Error: El correo '{}' no tiene un formato válido.".format(correo_completo))
+            return False
+            
+        pos_arroba = correo_completo.index('@')
+        nombre_servidor = correo_completo[pos_arroba + 1:] 
+            
+        if not nombre_servidor:
+            print("Error: El correo '{}' no especifica un servidor.".format(correo_completo))
+            return False
+
+        # Buscar el NodoServidor en el grafo 
+        nodo_encontrado = self.mostrar_nodo(nombre_servidor)
+
+        if nodo_encontrado is None:
+            print("Error: No se encontró el servidor '{}' en la red.".format(nombre_servidor))
+            return False
+            
+        # Crear el nuevo usuario
+        nuevo_usuario = Usuario(correo_completo, contrasenia)
+            
+        # Registrar el usuario en el servidor asociado al nodo
+        servidor_destino = nodo_encontrado.servidor
+        servidor_destino.registrar_registrar(nuevo_usuario)             
+        print("Usuario '{}' registrado con éxito en el servidor '{}'.".format(correo_completo, nombre_servidor))
+        return True
+    
+# Registrar usuarios en cualquier servidor
+    
+# Iniciamos el Grafo de servidores
+RED=RedServidores()
+# Creamos servidores y nodos y los agragamos al grafo.
+guernica = Servidor("guernica")
+glew = Servidor("glew")
+burzaco=Servidor("burzaco")
+nodo_guernica = NodoServidor(guernica)
+nodo_glew = NodoServidor(glew)
+nodo_burzaco = NodoServidor(burzaco)
+RED.agregar_nodo(nodo_guernica)
+RED.agregar_nodo(nodo_glew)
+RED.agregar_nodo(nodo_burzaco)
+
+# CONEXIONES DEL GRAFO
+# 1. Guernica <--> Glew
+conexion_1 = Conexion(nodo_guernica, nodo_glew)
+RED.agregar_conexione(conexion_1)
+
+# 2. Glew <--> Burzaco
+conexion_2 = Conexion(nodo_glew, nodo_burzaco)
+RED.agregar_conexione(conexion_2)
+
+# 3. Guernica <--> Burzaco
+conexion_3 = Conexion(nodo_guernica, nodo_burzaco)
+RED.agregar_conexione(conexion_3)
+
 # se crean usuarios para facilitar las pruebas
-usuario1 = Usuario("Julio", "123")
-usuario2 = Usuario("Cristian", "123")
-usuario3 = Usuario("Ruben", "123")
-servidor.registrar_registrar(usuario1)
-servidor.registrar_registrar(usuario2)
-servidor.registrar_registrar(usuario3) 
+usuario1 = Usuario("Julio@guernica", "123")
+usuario2 = Usuario("Cristian@glew", "123")
+usuario3 = Usuario("Ruben@burzaco", "123")
+guernica.registrar_registrar(usuario1)
+burzaco.registrar_registrar(usuario3)
+glew.registrar_registrar(usuario2)
+ 
 #se crean msj genericos
 msj1 = Mensaje("Julio", "Ruben", "Urgente", "Llegaré tarde a la reunión. Empiecen sin mí.")
 msj2 = Mensaje("Cristian", "Ruben", "Pendiente", "Recuerda enviar el informe de ventas hoy.")
@@ -241,28 +485,27 @@ def menu_principal():
     while True:
         print("\nBienvenido al Menú principal")
         print("\nElija una opción:\n1.Creación de un usuario\n2.Iniciar sesión\n3.Salir")
-        num = int(input("\nIngrese la opción deseada: "))
-        if num == 1:
+        num = input("\nIngrese la opción deseada: ")
+        if num == "1":
             menu_creacion()
-        elif num == 2:
+        elif num == "2":
             iniciar_sesion()
-        elif num == 3:
+        elif num == "3":
             print("\nSaliendo del programa")
             break
         else:
             print("\nOpción incorrecta")
-
+#editar para poder registrar en un servidor
 def menu_creacion():
     correo = input("\nCree su correo: ")
     contrasenia = input("\nCree su contraseña: ")
-    per = Usuario(correo, contrasenia)
-    servidor.registrar_registrar(per)
-    print("\nUsuario creado con éxito.")
+    RED.registrar_usuario(correo, contrasenia)
+    
 
 def iniciar_sesion():
     correo = input("\nIngrese su correo: ")
     contrasenia = input("\nIngrese su contraseña: ")
-    usuario = servidor.ingresar_usuario(correo, contrasenia)
+    usuario = RED.iniciar_sesion(correo,contrasenia)
     if usuario:
         print("\nUsuario y contraseña correctos")
         usuario_logeado = usuario
@@ -279,20 +522,20 @@ def menu_usuario(usuario_logeado):
         print("3. Marcar mensaje como urgente")
         print("4. Administrar Reglas de Filtro")
         print("5. Cerrar sesión")
-        opcion = int(input("\nIngrese la opcion deseada: "))
+        opcion = input("\nIngrese la opcion deseada: ")
 
-        if opcion == 1:
+        if opcion == "1":
             remitente = usuario_logeado.correo
             receptor = input("\nIngrese el correo del receptor: ")
             asunto = input("\nIngrese el asunto: ")
             cuerpo = input("\nIngrese el mensaje: ")
             mensaje = Mensaje(remitente, receptor, asunto, cuerpo)
-            servidor.enviar_msj(usuario_logeado, mensaje)
+            RED.enviar_mensaje_por_red(usuario_logeado, mensaje)
 
-        elif opcion == 2:
+        elif opcion == "2":
             menu_carpetas(usuario_logeado)
         
-        elif opcion == 3:
+        elif opcion == "3":
             print("\nBUZÓN DE ENTRADA:")
             if usuario_logeado.buzon.mensajes:
                 for m in usuario_logeado.buzon.mensajes:
@@ -306,18 +549,18 @@ def menu_usuario(usuario_logeado):
             usuario_logeado.carpeta_raiz.eliminar_mensaje_por_asunto(asunto)
             print("Mensaje Marcado correctamente como urgente")
         
-        elif opcion == 4:
+        elif opcion == "4":
             print("\nAdministrar reglas de filtrado")
             usuario_logeado.carpeta_raiz.arbol_carpetas()
             nombre_carpeta = input("Ingrese el nombre de la carpeta de destino")
             print("\nElija el tipo de filtro:")
             print(" 1. Asunto o 2. Remitente")
-            tipo = int(input("   Ingrese '1' o '2': "))
+            tipo = input("   Ingrese '1' o '2': ")
             tipo_filtro = ""
-            if tipo == 1:
+            if tipo == "1":
                 tipo_filtro = "asunto"
                 valor = input("Ingrese palabra clave en el asunto ")
-            elif tipo == 2 :
+            elif tipo == "2" :
                 tipo_filtro = "remitente"
                 valor = input("Ingrese el remitente a filtrar")
             else:
@@ -326,7 +569,7 @@ def menu_usuario(usuario_logeado):
 
             usuario_logeado.agregar_regla_filtro(nombre_carpeta, tipo_filtro, valor)
         
-        elif opcion == 5:
+        elif opcion == "5":
             print("\nSesión cerrada con éxito.")
             usuario_logeado = None
             break
@@ -345,15 +588,15 @@ def menu_carpetas(usuario):
         print("6. Ver Mensajes de una carpeta") 
         print("7. Volver al Menú Principal") 
         
-        opcion = int(input("\nSeleccione una opción: "))
+        opcion = input("\nSeleccione una opción: ")
         raiz = usuario.carpeta_raiz   
         # Se agregan los mensajes al principio del Buzón de entrada 
         usuario.desencolar_mensajes_urgentes()
         usuario.aplicar_filtros_a_buzon()
-        if opcion == 1:
+        if opcion == "1":
             raiz.mostrar_carpetas_con_msj()
 
-        elif opcion == 2:
+        elif opcion == "2":
             print("\nBUZÓN DE ENTRADA:")
             if usuario.buzon.mensajes:
                 for m in usuario.buzon.mensajes:
@@ -361,7 +604,7 @@ def menu_carpetas(usuario):
             else:
                 print("No hay mensajes.")
 
-        elif opcion == 3:
+        elif opcion == "3":
             print("\nMENSAJES ENVIADOS:")
             if usuario.enviados.mensajes:
                 for m in usuario.enviados.mensajes:
@@ -369,7 +612,7 @@ def menu_carpetas(usuario):
             else:
                 print("No has enviado mensajes.")
 
-        elif opcion == 4:
+        elif opcion == "4":
             carp = input("\nIngrese nombre de la carpeta a agregar: ")
             carpeta = Carpeta(carp)
             raiz.arbol_carpetas()
@@ -379,7 +622,7 @@ def menu_carpetas(usuario):
             else:
                 print("\nCarpeta destino '{}' no encontrada.".format(subcarpeta))
 
-        elif opcion == 5:
+        elif opcion == "5":
             print("\n--- Mover Mensaje ---")
             raiz.mostrar_carpetas_con_msj()
             print("\n--- Carpetas Disponibles (por nombre) ---")
@@ -392,22 +635,24 @@ def menu_carpetas(usuario):
                 print("La carpeta de destino '{}' no fue encontrada." .format(destino))
             elif estado is True:
                 print("Mensaje '{}' movido con éxito a '{}'." .format(asunto,destino))
-        elif opcion == 6:
+        elif opcion == "6":
             print("\n--- Ver Mensajes de Carpeta ---")
             raiz.arbol_carpetas()
             nombre_carpeta = input("\nIngrese el NOMBRE de la carpeta que desea ver: ")
             carpeta_a_ver = raiz.encontrar_carpeta(nombre_carpeta)
             if carpeta_a_ver:
-                print(f"\nContenido de la carpeta '{nombre_carpeta}':")
+                print("\nContenido de la carpeta '{}':".format(nombre_carpeta))
                 if carpeta_a_ver.mensajes:
                     for m in carpeta_a_ver.mensajes:
                         print(m)
                 else:
                     print("La carpeta no contiene mensajes.")
             else:
-                print(f"ERROR: Carpeta '{nombre_carpeta}' no encontrada.")        
-        elif opcion == 7:
+                print("ERROR: Carpeta '{}' no encontrada.".format(nombre_carpeta))        
+        elif opcion == "7":
             break
         else:
             print("\nOpción incorrecta.")
+            
+print(RED)
 menu_principal()
