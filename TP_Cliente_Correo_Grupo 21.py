@@ -46,13 +46,17 @@ class Usuario:
                 break
             mensajes_nuevos.append(mensaje_actual)
         self.buzon.mensajes=mensajes_nuevos + self.buzon.mensajes
-    # Metodos par agregar reglas
+    # Metodos para agregar reglas
     def agregar_regla_filtro(self, nombre_carpeta, tipo_filtro, valor_a_buscar):
         tipo_filtro = tipo_filtro.lower()
         if tipo_filtro not in ["asunto", "remitente"]:
             print(" ERROR: El tipo de filtro debe ser 'asunto' o 'remitente'.")
             return
-        self.reglas_filtro[nombre_carpeta] = [tipo_filtro, valor_a_buscar.lower()]
+        if nombre_carpeta in self.reglas_filtro:
+            self.reglas_filtro[nombre_carpeta].append((tipo_filtro, valor_a_buscar.lower()))
+        else:
+            self.reglas_filtro[nombre_carpeta]=[]
+            self.reglas_filtro[nombre_carpeta].append((tipo_filtro, valor_a_buscar.lower()))
         if not self.carpeta_raiz.encontrar_carpeta(nombre_carpeta):
             nueva_carpeta = Carpeta(nombre_carpeta)
             self.carpeta_raiz.agregar_carpeta(nueva_carpeta)
@@ -66,22 +70,47 @@ class Usuario:
         for mensaje in mensajes_para_revisar:
             mensaje_clasificado = False
             for nombre_carpeta, regla in self.reglas_filtro.items():
-                tipo_filtro = regla[0]
-                valor_esperado = regla[1]
-                valor_real = ""
-                if tipo_filtro == "asunto":
-                    valor_real = mensaje.asunto.lower()
-                elif tipo_filtro == "remitente":
-                    valor_real = mensaje.remitente.lower()
-                if valor_esperado in valor_real:
-                    carpeta_destino = self.carpeta_raiz.encontrar_carpeta(nombre_carpeta)
-                    if carpeta_destino:
-                        carpeta_destino.agregar_mensaje(mensaje)
-                        mensaje_clasificado = True
-                        break
+                for reglas in regla:
+                    tipo_filtro = reglas[0]
+                    valor_esperado = reglas[1]
+                    valor_real = ""
+                    if tipo_filtro == "asunto":
+                        valor_real = mensaje.asunto.lower()
+                    elif tipo_filtro == "remitente":
+                        valor_real = mensaje.remitente.lower()
+                    if valor_esperado in valor_real:
+                        carpeta_destino = self.carpeta_raiz.encontrar_carpeta(nombre_carpeta)
+                        if carpeta_destino:
+                            carpeta_destino.agregar_mensaje(mensaje)
+                            mensaje_clasificado = True
+                            break
             if not mensaje_clasificado:
-                self.buzon.mensajes.append(mensaje)        
-    
+                self.buzon.mensajes.append(mensaje)
+    def mostrar_filtros(self):
+        print("\n--REGLAS DE FILTRO--")
+        if not self.reglas_filtro:
+            print("\nNo hay filtros")
+            return
+        
+        for self.nombre_carpeta, datos in self.reglas_filtro.items():
+            print("CARPETA:", self.nombre_carpeta)
+            for dato in datos:
+                tipo_filtro, valor = dato                
+                print("---asunto/remitente:", tipo_filtro)
+                print("---palabra clave:", valor)
+                
+    def borrar_filtros(self):
+        borrado = input("\nNombre de el asunto o remitente a borrar filtro: ")
+        if not self.reglas_filtro:
+            print("\nNo hay filtros")
+            return
+        for self.nombre_carpeta, datos in self.reglas_filtro.items():
+            for dato in datos:
+                tipo_filtro, valor = dato
+                if valor==borrado:
+                    datos.remove(dato)
+                    print("El filtro fue borrado.")                                
+        print(self.reglas_filtro)
 class Mensaje:
     def __init__(self, remitente, receptor, asunto, cuerpo,urgencia=""):
         self.remitente = remitente
@@ -550,25 +579,33 @@ def menu_usuario(usuario_logeado):
             print("Mensaje Marcado correctamente como urgente")
         
         elif opcion == "4":
-            print("\nAdministrar reglas de filtrado")
-            usuario_logeado.carpeta_raiz.arbol_carpetas()
-            nombre_carpeta = input("Ingrese el nombre de la carpeta de destino")
-            print("\nElija el tipo de filtro:")
-            print(" 1. Asunto o 2. Remitente")
-            tipo = input("   Ingrese '1' o '2': ")
-            tipo_filtro = ""
-            if tipo == "1":
-                tipo_filtro = "asunto"
-                valor = input("Ingrese palabra clave en el asunto ")
-            elif tipo == "2" :
-                tipo_filtro = "remitente"
-                valor = input("Ingrese el remitente a filtrar")
-            else:
-                print(" Tipo de filtro no válido.")
-                continue
-
-            usuario_logeado.agregar_regla_filtro(nombre_carpeta, tipo_filtro, valor)
-        
+            print(" 1. Agregar filtro o 2. Borrar filtro")
+            eleccion = input(" Ingrese '1' o '2': ")
+            if eleccion == "1":
+                print("\nAdministrar reglas de filtrado")
+                usuario_logeado.carpeta_raiz.arbol_carpetas()
+                nombre_carpeta = input("Ingrese el nombre de la carpeta de destino: ")
+                print("\nElija el tipo de filtro: ")
+                print(" 1. Asunto o 2. Remitente")
+                tipo = input("   Ingrese '1' o '2': ")
+                tipo_filtro = ""
+                if tipo == "1":
+                    tipo_filtro = "asunto"
+                    valor = input("Ingrese palabra clave en el asunto: ")
+                    usuario_logeado.agregar_regla_filtro(nombre_carpeta, tipo_filtro, valor)
+                elif tipo == "2" :
+                    tipo_filtro = "remitente"
+                    valor = input("Ingrese el remitente a filtrar: ")
+                    usuario_logeado.agregar_regla_filtro(nombre_carpeta, tipo_filtro, valor)
+                else:
+                    print(" Tipo de filtro no válido.")
+            elif eleccion == "2" :
+                if not usuario_logeado.reglas_filtro:
+                    print("No hay filtros")
+                    
+                else:
+                    usuario_logeado.mostrar_filtros()
+                    usuario_logeado.borrar_filtros()
         elif opcion == "5":
             print("\nSesión cerrada con éxito.")
             usuario_logeado = None
