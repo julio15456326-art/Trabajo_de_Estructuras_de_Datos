@@ -134,7 +134,7 @@ class Carpeta():
 
     def agregar_mensaje(self, mensaje):
         self.mensajes.append(mensaje)
-
+#Muestra el arbol de carpetas
     def arbol_carpetas(self, nivel=0):
         contador = "  " * nivel
         print("{} ├── {}".format(contador, self.nombre))
